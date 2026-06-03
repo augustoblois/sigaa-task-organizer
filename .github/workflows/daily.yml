@@ -1,0 +1,41 @@
+name: SIGAA daily
+
+on:
+  schedule:
+    # 10/16/22 UTC = 7h/13h/19h BRT (UTC-3)
+    - cron: "0 10,16,22 * * *"
+  workflow_dispatch: {}  # permite disparo manual pra teste
+
+concurrency:
+  group: sigaa-daily
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    env:
+      SIGAA_USER: ${{ secrets.SIGAA_USER }}
+      SIGAA_PASS: ${{ secrets.SIGAA_PASS }}
+      GOOGLE_TASKLIST: ${{ secrets.GOOGLE_TASKLIST }}
+      NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+      HEADLESS: "true"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install deps
+        run: |
+          pip install -r requirements.txt
+          playwright install --with-deps chromium
+
+      - name: Write Google OAuth files
+        run: |
+          printf '%s' '${{ secrets.GOOGLE_CREDENTIALS }}' > credentials.json
+          printf '%s' '${{ secrets.GOOGLE_TOKEN }}' > token.json
+
+      - name: Run pipeline
+        run: python tools/run.py

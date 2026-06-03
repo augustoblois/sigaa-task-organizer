@@ -1,0 +1,8 @@
+.venv/
+.env
+.tmp/
+__pycache__/
+credentials.json
+token.json
+sigaa_state.json
+*.png
