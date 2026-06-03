@@ -20,16 +20,15 @@ Checklist vivo. Marcar `[x]` ao concluir. Detalhe técnico mora no `CLAUDE.md`.
   - [x] push ntfy de nova tarefa (`NTFY_TOPIC`)
 - [x] `CLAUDE.md` (arquitetura + gotchas) + ntfy testado
 
-## ⏳ Fase 2 — automação remota (GitHub Actions)
+## ✅ Fase 2 — automação remota (GitHub Actions) — LIVE (2026-06-03)
 
-Objetivo: rodar sozinho toda manhã, máquina desligada.
+Roda sozinho 7h/13h/19h BRT, máquina desligada. 1º run manual: tudo verde.
 
-- [ ] **`tools/run.py`** — orquestra login → scrape → push em sequência, aborta+reporta em falha. Entrypoint do cron.
-- [ ] **`.github/workflows/daily.yml`** — cron manhã BRT (UTC-3, ex `0 9 * * *`), instala `chromium` headless, roda `run.py`
-- [ ] **Repo privado** no GitHub + push do código
-- [ ] **Secrets**: `SIGAA_USER`, `SIGAA_PASS`, `GOOGLE_TASKLIST`, `NTFY_TOPIC`, `credentials.json`, `token.json` (escrever os JSON em arquivo no início do job). Molde: `newsletter-ai`.
-- [ ] **🔴 Testar risco nº1** no 1º run: login SIGAA do IP do runner (datacenter US) pode ser bloqueado
-  - [ ] se bloquear → **plano B: Windows Task Scheduler** (local, PC ligado; sem risco de IP)
+- [x] **`tools/run.py`** — orquestra login → scrape → push via subprocess, aborta+reporta+ntfy em falha. Entrypoint do cron. Checa returncode E stdout (`LOGIN FALHOU` sai com código 0).
+- [x] **`.github/workflows/daily.yml`** — cron `0 10,16,22 * * *` UTC (7h/13h/19h BRT) + `workflow_dispatch`, `playwright install --with-deps chromium`, `HEADLESS=true`
+- [x] **Repo privado** github.com/augustoblois/sigaa-task-organizer + push
+- [x] **Secrets**: `SIGAA_USER`, `SIGAA_PASS`, `GOOGLE_TASKLIST`, `NTFY_TOPIC`, `GOOGLE_CREDENTIALS`, `GOOGLE_TOKEN` (os 2 JSON escritos em arquivo no início do job)
+- [x] **🔴 Risco nº1 testado** — login do IP do runner **NÃO** foi bloqueado. Plano B (Task Scheduler) não precisou.
 
 ## 🔒 Pendências de segurança
 
