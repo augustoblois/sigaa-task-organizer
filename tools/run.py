@@ -30,6 +30,25 @@ STEPS = [
 ]
 
 
+def notify_ok():
+    topic = os.environ.get("NTFY_TOPIC", "").strip()
+    if not topic:
+        return
+    req = urllib.request.Request(
+        f"https://ntfy.sh/{topic}",
+        data=b"Sem tarefas novas.",
+        headers={
+            "Title": b"SIGAA: pipeline OK, nada novo",
+            "Tags": "white_check_mark",
+            "Priority": "min",
+        },
+    )
+    try:
+        urllib.request.urlopen(req, timeout=10)
+    except Exception as e:
+        print(f"Falha ao notificar ntfy: {e}")
+
+
 def notify_falha(etapa: str, detalhe: str):
     topic = os.environ.get("NTFY_TOPIC", "").strip()
     if not topic:
@@ -63,20 +82,24 @@ def run_step(script: str, fail_marker: str | None):
         print(proc.stderr, end="", file=sys.stderr)
 
     if proc.returncode != 0:
-        return f"returncode {proc.returncode}"
+        return f"returncode {proc.returncode}", proc.stdout
     if fail_marker and fail_marker in proc.stdout:
-        return fail_marker
-    return None
+        return fail_marker, proc.stdout
+    return None, proc.stdout
 
 
 def main():
+    last_stdout = ""
     for script, fail_marker in STEPS:
-        erro = run_step(script, fail_marker)
+        erro, stdout = run_step(script, fail_marker)
+        last_stdout = stdout
         if erro:
             print(f"\nABORTOU em {script}: {erro}")
             notify_falha(script, erro)
             sys.exit(1)
     print("\nPipeline OK.")
+    if "0 nova(s) tarefa" in last_stdout:
+        notify_ok()
 
 
 if __name__ == "__main__":

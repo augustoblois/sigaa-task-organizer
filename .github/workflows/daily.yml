@@ -19,6 +19,7 @@ jobs:
       GOOGLE_TASKLIST: ${{ secrets.GOOGLE_TASKLIST }}
       NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
       HEADLESS: "true"
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - uses: actions/checkout@v4
 
