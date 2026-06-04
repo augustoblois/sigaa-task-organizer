@@ -82,7 +82,13 @@ def scrape_turma(page, idx):
     links.nth(idx).click()
     page.wait_for_load_state("networkidle")
     open_tarefas(page)
-    raw = page.evaluate(EXTRACT_JS)
+    try:
+        raw = page.evaluate(EXTRACT_JS)
+    except Exception:
+        # JSF pode disparar navegacao extra apos networkidle; aguarda e retenta
+        page.wait_for_load_state("networkidle")
+        page.wait_for_timeout(2000)
+        raw = page.evaluate(EXTRACT_JS)
     tasks = []
     for t in raw:
         tasks.append(
