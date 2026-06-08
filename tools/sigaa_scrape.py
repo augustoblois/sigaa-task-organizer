@@ -5,7 +5,9 @@ Pre-requisito: rodar sigaa_login.py antes (gera .tmp/sigaa_state.json).
 Uso:
     python tools/sigaa_scrape.py
 
-Saida: .tmp/tasks.json com a lista de tarefas (titulo, prazo, status, descricao, ids).
+Saida:
+  - .tmp/tasks.json  : tarefas (titulo, prazo, status, descricao, ids).
+  - .tmp/provas.json : avaliacoes (disciplina, data, hora, descricao, prazo).
 """
 import json
 import os
@@ -59,6 +61,37 @@ EXTRACT_JS = r"""
 }
 """
 
+# JS que extrai as avaliacoes da tabela "listing" da pagina /sigaa/ava (Avaliacoes).
+# Colunas: Data | Hora | Descricao (+ icone de visualizar). Le por posicao e
+# valida col 0 como data DD/MM/YYYY pra pular o cabecalho.
+EXTRACT_AVALIACOES_JS = r"""
+() => {
+  const out = [];
+  const table = document.querySelector('table.listing');
+  if (!table) return out;
+  const rows = [...table.querySelectorAll('tbody > tr')];
+  for (const r of rows) {
+    const tds = [...r.querySelectorAll('td')];
+    if (tds.length < 3) continue;
+    const data = tds[0].innerText.trim();
+    if (!/^\d{2}\/\d{2}\/\d{4}$/.test(data)) continue;
+    out.push({ data, hora: tds[1].innerText.trim(), desc: tds[2].innerText.trim() });
+  }
+  return out;
+}
+"""
+
+
+def parse_prazo_avaliacao(data: str, hora: str):
+    """'DD/MM/YYYY' + 'HHhMM'/'HH:MM' -> 'YYYY-MM-DDTHH:MM:00'."""
+    m = re.match(r"(\d{2})/(\d{2})/(\d{4})", data)
+    if not m:
+        return None
+    d, mo, y = m.groups()
+    hm = re.search(r"(\d{1,2})[h:](\d{2})", hora)
+    h, mi = (hm.group(1).zfill(2), hm.group(2)) if hm else ("00", "00")
+    return f"{y}-{mo}-{d}T{h}:{mi}:00"
+
 
 def parse_prazo(period: str):
     """Extrai a data/hora final do texto 'de ... a DD/MM/YYYY as HHhMM'."""
@@ -69,11 +102,24 @@ def parse_prazo(period: str):
     return f"{y}-{mo}-{d}T{h}:{mi}:00"
 
 
-def open_tarefas(page):
-    page.locator('a:has(div.itemMenu:text-is("Tarefas"))').first.dispatch_event("click")
+def open_menu(page, label):
+    """Abre um item do submenu lateral da turma virtual (ex: 'Tarefas',
+    'Avaliacoes'). Fica em submenu oculto -> dispatch_event roda o onclick JSF."""
+    page.locator(f'a:has(div.itemMenu:text-is("{label}"))').first.dispatch_event("click")
     page.wait_for_load_state("domcontentloaded")
     page.wait_for_load_state("networkidle")
     page.wait_for_timeout(1500)
+
+
+def evaluate_retry(page, js):
+    """JSF pode disparar navegacao extra apos networkidle e destruir o contexto
+    do evaluate; aguarda e retenta uma vez."""
+    try:
+        return page.evaluate(js)
+    except Exception:
+        page.wait_for_load_state("networkidle")
+        page.wait_for_timeout(2000)
+        return page.evaluate(js)
 
 
 def scrape_turma(page, idx):
@@ -81,14 +127,9 @@ def scrape_turma(page, idx):
     name = links.nth(idx).inner_text().strip()
     links.nth(idx).click()
     page.wait_for_load_state("networkidle")
-    open_tarefas(page)
-    try:
-        raw = page.evaluate(EXTRACT_JS)
-    except Exception:
-        # JSF pode disparar navegacao extra apos networkidle; aguarda e retenta
-        page.wait_for_load_state("networkidle")
-        page.wait_for_timeout(2000)
-        raw = page.evaluate(EXTRACT_JS)
+
+    open_menu(page, "Tarefas")
+    raw = evaluate_retry(page, EXTRACT_JS)
     tasks = []
     for t in raw:
         tasks.append(
@@ -103,7 +144,21 @@ def scrape_turma(page, idx):
                 "descricao": t["desc"],
             }
         )
-    return name, tasks
+
+    open_menu(page, "Avaliações")
+    raw_av = evaluate_retry(page, EXTRACT_AVALIACOES_JS)
+    provas = []
+    for a in raw_av:
+        provas.append(
+            {
+                "disciplina": name,
+                "data": a["data"],
+                "hora": a["hora"],
+                "descricao": a["desc"],
+                "prazo": parse_prazo_avaliacao(a["data"], a["hora"]),
+            }
+        )
+    return name, tasks, provas
 
 
 def main():
@@ -127,18 +182,24 @@ def main():
         n = page.locator(TURMA_SELECTOR).count()
         print(f"{n} turmas encontradas.")
 
+        all_provas = []
         for i in range(n):
             page.goto(PORTAL_URL, wait_until="networkidle")
-            name, tasks = scrape_turma(page, i)
-            print(f"  [{i}] {name}: {len(tasks)} tarefa(s)")
+            name, tasks, provas = scrape_turma(page, i)
+            print(f"  [{i}] {name}: {len(tasks)} tarefa(s), {len(provas)} avaliacao(oes)")
             all_tasks.extend(tasks)
+            all_provas.extend(provas)
 
         browser.close()
 
     (TMP / "tasks.json").write_text(
         json.dumps(all_tasks, ensure_ascii=False, indent=2), encoding="utf-8"
     )
+    (TMP / "provas.json").write_text(
+        json.dumps(all_provas, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
     print(f"\nTotal: {len(all_tasks)} tarefas -> .tmp/tasks.json")
+    print(f"Total: {len(all_provas)} avaliacoes -> .tmp/provas.json")
 
 
 if __name__ == "__main__":

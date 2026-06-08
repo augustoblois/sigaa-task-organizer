@@ -98,7 +98,7 @@ def main():
             notify_falha(script, erro)
             sys.exit(1)
     print("\nPipeline OK.")
-    if "0 nova(s) tarefa" in last_stdout:
+    if "[PIPELINE] novos=0" in last_stdout:
         notify_ok()
 
 
