@@ -23,11 +23,20 @@ load_dotenv(ROOT / ".env")
 
 # (script, frase no stdout que indica falha apesar de returncode 0).
 # sigaa_login.py imprime "LOGIN FALHOU" mas sai com codigo 0 -> checar o texto.
-STEPS = [
-    ("sigaa_login.py", "LOGIN FALHOU"),
-    ("sigaa_scrape.py", None),
-    ("push_tasks.py", None),
-]
+# MODE (.env/env) escolhe o pipeline: 'tarefas' (default, 6x/dia) ou
+# 'frequencia' (alerta de faltas, 1-2x/semana via workflow separado).
+MODES = {
+    "tarefas": [
+        ("sigaa_login.py", "LOGIN FALHOU"),
+        ("sigaa_scrape.py", None),
+        ("push_tasks.py", None),
+    ],
+    "frequencia": [
+        ("sigaa_login.py", "LOGIN FALHOU"),
+        ("sigaa_frequencia.py", None),
+        ("push_frequencia.py", None),
+    ],
+}
 
 
 def notify_ok():
@@ -89,8 +98,12 @@ def run_step(script: str, fail_marker: str | None):
 
 
 def main():
+    mode = os.environ.get("MODE", "tarefas").strip().lower()
+    if mode not in MODES:
+        raise SystemExit(f"MODE invalido: {mode!r}. Use um de: {', '.join(MODES)}")
+    print(f"MODE={mode}")
     last_stdout = ""
-    for script, fail_marker in STEPS:
+    for script, fail_marker in MODES[mode]:
         erro, stdout = run_step(script, fail_marker)
         last_stdout = stdout
         if erro:

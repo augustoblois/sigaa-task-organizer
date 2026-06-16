@@ -105,7 +105,7 @@ def existing_tags(service, tasklist):
                 tarefas.add(notes.split("[sigaa:")[1].split("]")[0])
             if "[prova:" in notes:
                 provas.add(notes.split("[prova:")[1].split("]")[0])
-        page_token = resp.get("nextToken")
+        page_token = resp.get("nextPageToken")
         if not page_token:
             break
     return tarefas, provas
