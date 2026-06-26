@@ -31,6 +31,10 @@ jobs:
       - name: Install deps
         run: |
           pip install -r requirements.txt
+          # repos Microsoft/azure dos runners do GitHub as vezes devolvem 403 e
+          # quebram o `apt update` do --with-deps; removemos antes (nao tem relacao
+          # com Playwright/Chromium)
+          sudo rm -f /etc/apt/sources.list.d/microsoft* /etc/apt/sources.list.d/azure*
           playwright install --with-deps chromium
 
       - name: Write Google OAuth files
