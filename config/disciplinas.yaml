@@ -2,15 +2,15 @@
 # code: codigo da disciplina (como aparece no SIGAA)
 # name: nome legivel (vai pro titulo da tarefa)
 disciplinas:
-  - code: DADM00267
-    name: Administracao para Ciencias Exatas e Tecnologicas
-  - code: PSAE00263
-    name: Analise de Dados
-  - code: GDADM0139
-    name: Analise de Investimentos
-  - code: "1108100"
-    name: Calculo das Probabilidades e Estatistica I
-  - code: "1103178"
-    name: Calculo Diferencial e Integral II
-  - code: PSAE00262
-    name: Principios de Programacao II
+  - code: GDADM0133
+    name: Diagnostico e Consultoria Organizacional
+  - code: "1103179"
+    name: Introducao a Algebra Linear
+  - code: "1108124"
+    name: Metodos Estatisticos Aplicados as Ciencias Tecnologicas
+  - code: PSAE00264
+    name: Modelagem de Dados Nao Estruturados
+  - code: PSAE00265
+    name: Principios de Microeconomia
+  - code: DADM00268
+    name: Sistemas de Banco de Dados
